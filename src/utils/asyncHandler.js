@@ -5,7 +5,7 @@
 
 // * 2. asyncHandler(fn) - using Promose.catch() function to handle errors
 const asyncHandler = (requestHandler) => {
-  (req, res, next) => {
+  return (req, res, next) => {
     Promise.resolve(requestHandler(req, res, next)).catch((error) =>
       next(error)
     );
@@ -14,8 +14,6 @@ const asyncHandler = (requestHandler) => {
 
 export { asyncHandler };
 
-  
-  
 // * 1. asyncHandler(fn) - using try catch block to handle errors
 
 /**

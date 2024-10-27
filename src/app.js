@@ -18,6 +18,13 @@ app.use(express.urlencoded({ extended: true, limit: '16kb' })); // use body-pars
 app.use(express.static('public')); // use express.static middleware to serve static files
 app.use(cookieParser()); // use cookie-parser middleware to parse cookies
 
+// Imports Routes
+import userRouter from './routes/user.routes.js';
+
+// Routes Declaration
+app.use('/api/v1/users', userRouter);
+
+// http://localhost:8000/api/v1/users/register
 
 // export the app object
 export { app };
