@@ -91,4 +91,10 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
+// custom method to verify JWT token
+userSchema.methods.verifyAccessToken = function (token) {};
+
+// custom method to verify refresh token
+userSchema.methods.verifyRefreshToken = function (token) {};
+
 export const User = model('User', userSchema);
