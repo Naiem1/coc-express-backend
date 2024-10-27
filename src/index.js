@@ -1,16 +1,50 @@
 import dotenv from 'dotenv';
 import connectDB from './db/index.js';
+import { app } from './app.js';
+
 
 dotenv.config({
   path: './env',
 });
 
 
-connectDB();
+// Connect to MongoDB
+connectDB()
+  .then(() => {
+    // Listen Error event
+    app.on('error', (error) => {
+      console.log('⚠ ERROR: Could not start server', error);
+      throw error;
+    });
+    app.listen(process.env.PORT || 8000, () => {
+      console.log(`⚙ Server running on port ${process.env.PORT || 8000}`);
+    });
+  })
+  .catch((error) => {
+    console.log('❌ Error connecting to MongoDB database !!! :', error);
+  });
 
-
-
-
+/*   async function startServer() {
+    try {
+      await connectDB();
+      console.log('✅ Connected to MongoDB');
+  
+      app.on('error', (error) => {
+        console.error('⚠ ERROR: Could not start server', error);
+        process.exit(1); // Exit the process if there’s a critical error
+      });
+  
+      const PORT = process.env.PORT || 8000;
+      app.listen(PORT, () => {
+        console.log(`⚙ Server running on port ${PORT}`);
+      });
+    } catch (error) {
+      console.error('❌ Error connecting to MongoDB database:', error);
+      process.exit(1); // Exit if the DB connection fails
+    }
+  }
+  
+  startServer(); */
 
 /* import mongoose from 'mongoose';
 import { DB_NAME } from './constant';
