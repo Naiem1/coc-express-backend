@@ -275,4 +275,143 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+// Change the current user password
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body; // also we can add confirm password field
+
+  // const { oldPassword, newPassword, confirmPassword } = req.body;
+  // if (newPassword !== confirmPassword) {
+  //   throw new ApiError(400, 'Passwords do not match');
+  // }
+
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, 'All fields are required');
+  }
+
+  const user = await User.findOneId(req.user?._id);
+
+  // password match check
+  const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+  if (!isPasswordValid) {
+    throw new ApiError(400, 'Invalid password');
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, 'Password changed successfully'));
+});
+
+// Get the current user data
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, 'User fetched successfully'));
+});
+
+// Update the current user data
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+
+  const user = await User.findByIdAndUpdate(
+    // More optimize way to update, prevent unnecessary query
+    req.user._id,
+    {
+      $set: {
+        fullName,
+        email,
+      },
+    },
+    { new: true }
+  ).select('-password');
+
+  /**
+   * we can also make another query after update to get the updated user data
+   * then take Id and fetch anoter query using Id and remove password field
+   * after then return the response
+   */
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'User updated successfully'));
+});
+
+// Update file field for the current user
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path; // we can also directly save on database without uploading to cloudinary
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, 'Avatar file is missing');
+  }
+
+  const avatar = await uploadOnCloundinary(avatarLocalPath);
+
+  if (!avatar.url) {
+    throw new ApiError(400, 'Error while uploading on avatar');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    { new: true }
+  ).select('-password');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Avatar updated successfully'));
+});
+
+// Update cover image for the current user
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path; // we can also directly save on database without uploading to cloudinary
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, 'Cover Image file is missing');
+  }
+
+  const coverImage = await uploadOnCloundinary(coverImageLocalPath);
+
+  if (!coverImage.url) {
+    throw new ApiError(400, 'Error while uploading on cover Image');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverImage: coverImage.url,
+      },
+    },
+    { new: true }
+  ).select('-password');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Cover Image updated successfully'));
+});
+
+/**
+ * file update should sperate controller and route
+ * only file update
+ */
+
+// Mongodb operators learn (set, count, so on...)
+// JS reduce, aggration - Learn
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+};
