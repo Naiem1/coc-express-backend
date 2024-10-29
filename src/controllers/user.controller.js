@@ -568,6 +568,7 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getWatchHistory
 };
 
 // Arrgration Pipeline - Learn
