@@ -346,6 +346,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Avatar file is missing');
   }
 
+  // TODO: Delete local saved file after upload to cloudinary - make uility function for this
   const avatar = await uploadOnCloundinary(avatarLocalPath);
 
   if (!avatar.url) {
@@ -401,6 +402,91 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
  * only file update
  */
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  // step 1: extract username frmo query params
+  const { username } = req.params;
+
+  // step 2: validate the username - not empty
+  if (!username?.trim()) {
+    throw new ApiError(400, 'Username is required');
+  }
+
+  // step 3: find user by username
+  // const user = await User.find({ user });
+
+  // Aggregation pipeline
+  const channel = await User([
+    // Pipeline stage 1 - match/filtering stage to find user by username
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+    // Pipeline stage 2 - lookup stage to get user channel subscribers - my channel which people subscribed to me
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'channel',
+        as: 'subscribers',
+      },
+    },
+    // Pipeline stage 3 - lookup stage to get user subscriptions channel - channel which I subscribed - peoples channel
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'subscriber',
+        as: 'subscribedTo',
+        // as: 'subscriptions',
+      },
+    },
+    // Pipeline stage 4 - add fields stage to add user channel subscribers count
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: '$subscribers',
+        },
+        channelsSubscribedToCount: {
+          $size: '$subscribedTo',
+        },
+        // channel that I subscribed or not, if I subscribed then true else false
+        isSubscribed: {
+          $condition: {
+            if: { $in: [req.user?._id, '$subscribers.subscriber'] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    // Pipeline stage 5 - project stage to select required fields
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        email: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+        createdAt: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.length) {
+    throw new ApiError(404, 'Channel does not exist');
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], 'User channel fetched successfully')
+    );
+});
+
 // Mongodb operators learn (set, count, so on...)
 // JS reduce, aggration - Learn
 
@@ -414,4 +500,16 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };
+
+// Arrgration Pipeline - Learn
+
+/**
+ * Get user channel profile
+ * subscribe and channel make indivudial document for each user
+ */
+
+/**
+ * Join
+ */
