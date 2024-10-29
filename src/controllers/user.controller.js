@@ -5,6 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { uploadOnCloundinary } from '../utils/cloudnary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 // Generate access and refresh token for the user
 const generateAccessAndRefreshToken = async (userId) => {
@@ -402,6 +403,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
  * only file update
  */
 
+// Get user channel profile
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   // step 1: extract username frmo query params
   const { username } = req.params;
@@ -484,6 +486,71 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .status(200)
     .json(
       new ApiResponse(200, channel[0], 'User channel fetched successfully')
+    );
+});
+
+// Get User watch history
+// How to write sub pipelines and routes
+// watch history - nested lookup
+const getWatchHistory = asyncHandler(async (req, res) => {
+  // Multilayer aggregation pipeline to get user watch history
+  const user = await User.aggregate([
+    // pipeline stage 1 - match stage to find user by id
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+      // pipeline stage 2 - lookup stage to get user watch history - videos watched by user
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localField: 'watchHistory',
+        foreignField: '_id',
+        as: 'watchHistory',
+        // nested pipeline to get video details - lookup
+        pipeline: [
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'owner',
+              foreignField: '_id',
+              as: 'owner',
+              // nested pipeline to get user details - project
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      // pipeline stage 3 - add fields stage to add video duration and owner details
+      pipeline: [
+        {
+          $addFields: {
+            owner: {
+              $first: '$owner',
+            },
+          },
+        },
+      ],
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        'Watch history fetched successfully'
+      )
     );
 });
 
